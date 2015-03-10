@@ -3,7 +3,10 @@ package couchbase;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.document.JsonDocument;
 import com.couchbase.client.java.document.json.JsonObject;
+import stats.StatsHolder;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.stream.IntStream;
 
 /**
@@ -13,6 +16,16 @@ import java.util.stream.IntStream;
  * @version 1.0
  */
 public class GetLatencyTest {
+
+    public GetLatencyTest() {
+        Timer timer = new Timer("", true);
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                StatsHolder.dump("engine");
+            }
+        }, 0L, 10000L);
+    }
 
     public static void run(String... nodes) {
         final String key = "1";
@@ -30,10 +43,11 @@ public class GetLatencyTest {
                     try {
                         long start = System.currentTimeMillis();
                         JsonDocument found = bucket.get("" + i);
-                        Integer anInt = found.content().getInt("1");
-//                    System.out.println(anInt);
+//                        Integer anInt = found.content().getInt("1");
                         long stop = System.currentTimeMillis();
-                        System.err.println(stop - start);
+                        long latency = stop - start;
+                        StatsHolder.getEngine().update(latency);
+                        System.out.println(latency);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
