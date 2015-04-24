@@ -1,38 +1,28 @@
-package couchbase;
+package infinispan;
 
-import com.couchbase.client.java.Bucket;
-import com.couchbase.client.java.document.JsonDocument;
-import com.couchbase.client.java.document.json.JsonObject;
-import stats.StatsHolder;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 /**
- * Couchbase에 멀티 스레드로 데이터를 주입하는 Agent Class.
- *
- * @author <a href="iamtedwon@gmail.com">Ted Won</a>
- * @version 1.0
+ * Created by ted.won on 4/24/15.
  */
-public class StressTestAgent {
+public class InfinispanStressTestAgent {
 
 	private static final AtomicLong throughputCount = new AtomicLong();
 
-	public StressTestAgent() {
-		Timer timer = new Timer("", true);
-		timer.scheduleAtFixedRate(new TimerTask() {
-			@Override
-			public void run() {
-				StatsHolder.dump("engine");
-			}
-		}, 0L, 10000L);
-
+	public InfinispanStressTestAgent() {
 		Timer engineThroughputStatsTimer = new Timer("", true);
 		try {
 			engineThroughputStatsTimer.scheduleAtFixedRate(new TimerTask() {
 				final AtomicLong beforeInputCount = new AtomicLong();
+
 				@Override
 				public void run() {
 					// Thread 정상 종료
@@ -57,16 +47,14 @@ public class StressTestAgent {
 		}
 	}
 
-	public static void run(String... nodes) {
-		final String key = "1";
-		final int value = 1;
+	public static void main(String[] args) {
 
-		// Connect to the bucket and open it
-		CouchbaseUtil cb = new CouchbaseUtil(nodes);
-		Bucket bucket = cb.getBucket("default");
+		//API entry point, by default it connects to localhost:11222
+		RemoteCacheManager remoteCacheManager = new RemoteCacheManager();
 
-		// Create a JSON document and store it with the ID "helloworld"
-		JsonObject content = JsonObject.create().put(key, value);
+		//obtain a handle to the remote default cache
+		//        RemoteCache<String, String> remoteCache = remoteCacheManager.getCache();
+		RemoteCache<String, String> remoteCache = remoteCacheManager.getCache();
 
 		// 5억건
 		final int bigDataSize = 500000000;
@@ -74,18 +62,11 @@ public class StressTestAgent {
 				.parallel()
 				.forEach(i -> {
 					try {
-						bucket
-//								.async()
-								.upsert(JsonDocument.create("" + i, content));
+						remoteCache.put("" + i, "ABCDEFGHIJ");
 						throughputCount.incrementAndGet();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				});
-	}
-
-	public static void main(String[] args) {
-		StressTestAgent agent = new StressTestAgent();
-		agent.run(args);
 	}
 }
